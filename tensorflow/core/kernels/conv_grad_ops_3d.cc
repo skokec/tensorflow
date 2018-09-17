@@ -519,6 +519,7 @@ class Conv3DBackpropInputOp<GPUDevice, T> : public OpKernel {
         errors::InvalidArgument("Spatial strides should be larger than 0."));
     OP_REQUIRES_OK(context, context->GetAttr("padding", &padding_));
     cudnn_use_autotune_ = CudnnUseAutotune();
+    cudnn_use_deterministic_algo_ = CudnnUseDeterministicAlgo();
   }
   void Compute(OpKernelContext* context) override {
     const Tensor& filter = context->input(1);
@@ -733,9 +734,11 @@ class Conv3DBackpropInputOp<GPUDevice, T> : public OpKernel {
     if (cudnn_use_autotune_ && !AutoTuneConv3dBwdData::GetInstance()->Find(
                                    conv_parameters, &algorithm_config)) {
       std::vector<AlgorithmDesc> algorithms;
+      // TODO: use cudnn_use_deterministic_algo_
       CHECK(stream->parent()->GetConvolveBackwardDataAlgorithms(
           conv_parameters.ShouldIncludeWinogradNonfusedAlgo<T>(
               stream->parent()),
+          cudnn_use_deterministic_algo_,
           &algorithms));
       ProfileResult best_result;
       ProfileResult best_result_no_scratch;
@@ -833,6 +836,7 @@ class Conv3DBackpropInputOp<GPUDevice, T> : public OpKernel {
   TensorFormat data_format_;
   bool takes_shape_;
   bool cudnn_use_autotune_;
+  bool cudnn_use_deterministic_algo_;
 };
 
 // A dummy type to group backward filter autotune results together.
@@ -891,6 +895,7 @@ class Conv3DBackpropFilterOp<GPUDevice, T> : public OpKernel {
         errors::InvalidArgument("Spatial strides should be larger than 0."));
     OP_REQUIRES_OK(context, context->GetAttr("padding", &padding_));
     cudnn_use_autotune_ = CudnnUseAutotune();
+    cudnn_use_deterministic_algo_ = CudnnUseDeterministicAlgo();
   }
 
   void Compute(OpKernelContext* context) override {
@@ -1130,9 +1135,11 @@ class Conv3DBackpropFilterOp<GPUDevice, T> : public OpKernel {
     if (cudnn_use_autotune_ && !AutoTuneConv3dBwdFilter::GetInstance()->Find(
                                    conv_parameters, &algorithm_config)) {
       std::vector<AlgorithmDesc> algorithms;
+      // TODO: use cudnn_use_deterministic_algo_
       CHECK(stream->parent()->GetConvolveBackwardFilterAlgorithms(
           conv_parameters.ShouldIncludeWinogradNonfusedAlgo<T>(
               stream->parent()),
+          cudnn_use_deterministic_algo_,
           &algorithms));
       ProfileResult best_result;
       ProfileResult best_result_no_scratch;
@@ -1208,6 +1215,7 @@ class Conv3DBackpropFilterOp<GPUDevice, T> : public OpKernel {
   TensorFormat data_format_;
   bool takes_shape_;
   bool cudnn_use_autotune_;
+  bool cudnn_use_deterministic_algo_;
 };
 
 #define REGISTER_GPU_KERNEL(T)                                                \

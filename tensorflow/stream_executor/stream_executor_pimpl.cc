@@ -323,7 +323,7 @@ bool StreamExecutor::GetRnnAlgorithms(
 }
 
 bool StreamExecutor::GetConvolveBackwardDataAlgorithms(
-    bool with_winograd_nonfused,
+    bool with_winograd_nonfused, bool only_deterministic_algo,
     std::vector<dnn::AlgorithmDesc> *out_algorithms) {
   dnn::DnnSupport *dnn_support = AsDnn();
   if (!dnn_support) {
@@ -332,11 +332,12 @@ bool StreamExecutor::GetConvolveBackwardDataAlgorithms(
   int cc_major, cc_minor;
   GetDeviceDescription().cuda_compute_capability(&cc_major, &cc_minor);
   return dnn_support->GetConvolveBackwardDataAlgorithms(
-      with_winograd_nonfused, cc_major, cc_minor, out_algorithms);
+      with_winograd_nonfused, only_deterministic_algo, cc_major, cc_minor,
+      out_algorithms);
 }
 
 bool StreamExecutor::GetConvolveBackwardFilterAlgorithms(
-    bool with_winograd_nonfused,
+    bool with_winograd_nonfused, bool only_deterministic_algo,
     std::vector<dnn::AlgorithmDesc> *out_algorithms) {
   dnn::DnnSupport *dnn_support = AsDnn();
   if (!dnn_support) {
@@ -345,7 +346,8 @@ bool StreamExecutor::GetConvolveBackwardFilterAlgorithms(
   int cc_major, cc_minor;
   GetDeviceDescription().cuda_compute_capability(&cc_major, &cc_minor);
   return dnn_support->GetConvolveBackwardFilterAlgorithms(
-      with_winograd_nonfused, cc_major, cc_minor, out_algorithms);
+      with_winograd_nonfused, only_deterministic_algo, cc_major, cc_minor,
+      out_algorithms);
 }
 
 bool StreamExecutor::GetBlasGemmAlgorithms(

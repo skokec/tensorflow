@@ -37,14 +37,14 @@ bool DnnSupport::GetRnnAlgorithms(std::vector<AlgorithmDesc>* out_algorithms) {
 }
 
 bool DnnSupport::GetConvolveBackwardDataAlgorithms(
-    bool with_winograd_nonfused, int cc_major, int cc_minor,
-    std::vector<AlgorithmDesc>* out_algorithms) {
+    bool with_winograd_nonfused, bool only_deterministic_algo, int cc_major,
+    int cc_minor, std::vector<AlgorithmDesc>* out_algorithms) {
   return false;
 }
 
 bool DnnSupport::GetConvolveBackwardFilterAlgorithms(
-    bool with_winograd_nonfused, int cc_major, int cc_minor,
-    std::vector<AlgorithmDesc>* out_algorithms) {
+    bool with_winograd_nonfused, bool only_deterministic_algo, int cc_major,
+    int cc_minor, std::vector<AlgorithmDesc>* out_algorithms) {
   return false;
 }
 

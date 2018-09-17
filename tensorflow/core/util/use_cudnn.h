@@ -33,6 +33,7 @@ enum class FP16ConvMode {
 
 bool CanUseCudnn();
 bool CudnnUseAutotune();
+bool CudnnUseDeterministicAlgo();
 bool CudnnRnnUseAutotune();
 bool CudnnDisableConv1x1Optimization();
 FP16ConvMode CudnnConvComputeMode();

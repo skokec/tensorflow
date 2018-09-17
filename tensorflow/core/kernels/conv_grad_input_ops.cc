@@ -100,10 +100,10 @@ typedef Eigen::GpuDevice GPUDevice;
 template <typename T>
 struct LaunchConv2DBackpropInputOp<CPUDevice, T> {
   void operator()(OpKernelContext* ctx, bool use_cudnn, bool cudnn_use_autotune,
-                  const Tensor& out_backprop, const Tensor& filter,
-                  int row_dilation, int col_dilation, int row_stride,
-                  int col_stride, const Padding& padding, Tensor* in_backprop,
-                  TensorFormat data_format) {
+                  bool cudnn_use_deterministic_algo, const Tensor& out_backprop,
+                  const Tensor& filter, int row_dilation, int col_dilation,
+                  int row_stride, int col_stride, const Padding& padding,
+                  Tensor* in_backprop, TensorFormat data_format) {
     const CPUDevice& d = ctx->eigen_device<CPUDevice>();
     functor::SpatialConvolutionBackwardInput<CPUDevice, T>()(
         d, in_backprop->tensor<T, 4>(), filter.tensor<T, 4>(),
@@ -280,7 +280,7 @@ class Conv2DFastBackpropInputOp : public OpKernel {
 #endif
 
     LaunchConv2DBackpropInputOp<Device, T>()(
-        context, false, false, out_backprop, filter,
+        context, false, false, false, out_backprop, filter,
         /*row_dilation=*/1, /*col_dilation=*/1, dims.spatial_dims[0].stride,
         dims.spatial_dims[1].stride, padding_, in_backprop, data_format_);
   }
@@ -656,6 +656,7 @@ class Conv2DSlowBackpropInputOp : public OpKernel {
     OP_REQUIRES_OK(context, context->GetAttr("use_cudnn_on_gpu", &use_cudnn_));
     use_cudnn_ &= CanUseCudnn();
     cudnn_use_autotune_ = CudnnUseAutotune();
+    cudnn_use_deterministic_algo_ = CudnnUseDeterministicAlgo();
     OP_REQUIRES_OK(context, context->GetAttr("padding", &padding_));
   }
 
@@ -688,9 +689,9 @@ class Conv2DSlowBackpropInputOp : public OpKernel {
     const int dilation_rows = GetTensorDim(dilations_, data_format_, 'H');
     const int dilation_cols = GetTensorDim(dilations_, data_format_, 'W');
 
-    launcher_(context, use_cudnn_, cudnn_use_autotune_, out_backprop, filter,
-              dilation_rows, dilation_cols, stride_rows, stride_cols, padding_,
-              in_backprop, data_format_);
+    launcher_(context, use_cudnn_, cudnn_use_autotune_, cudnn_use_deterministic_algo_,
+              out_backprop, filter, dilation_rows, dilation_cols, stride_rows,
+              stride_cols, padding_, in_backprop, data_format_);
   }
 
  private:
@@ -701,15 +702,16 @@ class Conv2DSlowBackpropInputOp : public OpKernel {
   TensorFormat data_format_;
   LaunchConv2DBackpropInputOp<Device, T> launcher_;
   bool cudnn_use_autotune_;
-
+  bool cudnn_use_deterministic_algo_;
   TF_DISALLOW_COPY_AND_ASSIGN(Conv2DSlowBackpropInputOp);
 };
 
 template <typename T>
 void LaunchConv2DBackpropInputOp<GPUDevice, T>::operator()(
     OpKernelContext* ctx, bool use_cudnn, bool cudnn_use_autotune,
-    const Tensor& out_backprop, const Tensor& filter, int row_dilation,
-    int col_dilation, int row_stride, int col_stride, const Padding& padding,
+    bool cudnn_use_deterministic_algo, const Tensor& out_backprop,
+    const Tensor& filter, int row_dilation, int col_dilation,
+    int row_stride, int col_stride, const Padding& padding,
     Tensor* in_backprop, TensorFormat data_format) {
   using se::dnn::AlgorithmConfig;
   using se::dnn::AlgorithmDesc;
@@ -975,8 +977,10 @@ void LaunchConv2DBackpropInputOp<GPUDevice, T>::operator()(
   if (cudnn_use_autotune && !AutoTuneConvBwdData::GetInstance()->Find(
                                 conv_parameters, &algorithm_config)) {
     std::vector<AlgorithmDesc> algorithms;
+    // TODO: cudnn_use_deterministic_algo_
     CHECK(stream->parent()->GetConvolveBackwardDataAlgorithms(
         conv_parameters.ShouldIncludeWinogradNonfusedAlgo<T>(stream->parent()),
+        cudnn_use_deterministic_algo,
         &algorithms));
     ProfileResult best_result;
     ProfileResult best_result_no_scratch;

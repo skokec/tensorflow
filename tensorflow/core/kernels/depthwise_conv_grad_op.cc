@@ -566,6 +566,7 @@ class DepthwiseConv2dNativeBackpropInputOp : public OpKernel {
     // For in_depth == 1 and grouped convolutions.
     use_cudnn_ = CanUseCudnn() && std::is_same<Device, GPUDevice>::value;
     cudnn_use_autotune_ = CudnnUseAutotune();
+    cudnn_use_deterministic_algo_ = CudnnUseDeterministicAlgo();
     use_cudnn_grouped_conv_ = false;
     dtype_ = DataTypeToEnum<T>::value;
   }
@@ -631,9 +632,10 @@ class DepthwiseConv2dNativeBackpropInputOp : public OpKernel {
               "Failed to reshape filter tensor for grouped convolution."));
       // TODO(yangzihao): Send in arbitrary dilation rates after the dilated
       // conv is supported.
-      launcher_(context, use_cudnn_, cudnn_use_autotune_, out_backprop,
-                reshaped_filter, /*row_dilation=*/1, /*col_dilation=*/1,
-                stride_, stride_, padding_, in_backprop, data_format_);
+      launcher_(context, use_cudnn_, cudnn_use_autotune_, cudnn_use_deterministic_algo_,
+                out_backprop, reshaped_filter, /*row_dilation=*/1,
+                /*col_dilation=*/1, stride_, stride_, padding_, in_backprop,
+                data_format_);
       return;
     }
 
@@ -658,6 +660,7 @@ class DepthwiseConv2dNativeBackpropInputOp : public OpKernel {
   LaunchConv2DBackpropInputOp<Device, T> launcher_;
   bool use_cudnn_;
   bool cudnn_use_autotune_;
+  bool cudnn_use_deterministic_algo_;
   DataType dtype_;
 
   TF_DISALLOW_COPY_AND_ASSIGN(DepthwiseConv2dNativeBackpropInputOp);
@@ -1039,6 +1042,7 @@ class DepthwiseConv2dNativeBackpropFilterOp : public OpKernel {
     // For in_depth == 1 and grouped convolutions.
     use_cudnn_ = CanUseCudnn() && std::is_same<Device, GPUDevice>::value;
     cudnn_use_autotune_ = CudnnUseAutotune();
+    cudnn_use_deterministic_algo_ = CudnnUseDeterministicAlgo();
     use_cudnn_grouped_conv_ = false;
 
     if (std::is_same<T, Eigen::half>::value) {
@@ -1113,9 +1117,9 @@ class DepthwiseConv2dNativeBackpropFilterOp : public OpKernel {
 
       // TODO(yangzihao): Send in arbitrary dilation rates after the dilated
       // conv is supported.
-      launcher_(context, use_cudnn_, cudnn_use_autotune_, out_backprop, input,
-                /*row_dilation=*/1, /*col_dilation=*/1, stride_, stride_,
-                padding_, &reshaped_filter, data_format_);
+      launcher_(context, use_cudnn_, cudnn_use_autotune_, cudnn_use_deterministic_algo_,
+                out_backprop, input, /*row_dilation=*/1, /*col_dilation=*/1,
+                stride_, stride_, padding_, &reshaped_filter, data_format_);
       return;
     }
 
@@ -1140,6 +1144,7 @@ class DepthwiseConv2dNativeBackpropFilterOp : public OpKernel {
   LaunchConv2DBackpropFilterOp<Device, T> launcher_;
   bool use_cudnn_;
   bool cudnn_use_autotune_;
+  bool cudnn_use_deterministic_algo_;
   DataType dtype_;
 
   TF_DISALLOW_COPY_AND_ASSIGN(DepthwiseConv2dNativeBackpropFilterOp);

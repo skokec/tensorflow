@@ -2644,11 +2644,11 @@ bool CudnnSupport::GetRnnAlgorithms(
 }
 
 bool CudnnSupport::GetConvolveBackwardDataAlgorithms(
-    bool with_winograd_nonfused, int cc_major, int cc_minor,
-    std::vector<dnn::AlgorithmDesc>* out_algorithms) {
+    bool with_winograd_nonfused, bool only_deterministic_algo, int cc_major,
+    int cc_minor, std::vector<dnn::AlgorithmDesc>* out_algorithms) {
   std::vector<dnn::AlgorithmDesc::Index> algo_types = {
       // clang-format off
-    CUDNN_CONVOLUTION_BWD_DATA_ALGO_0,
+    //CUDNN_CONVOLUTION_BWD_DATA_ALGO_0, // non-deterministic
     CUDNN_CONVOLUTION_BWD_DATA_ALGO_1,
     CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT,
     CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING,
@@ -2657,6 +2657,11 @@ bool CudnnSupport::GetConvolveBackwardDataAlgorithms(
   };
   if (CudnnEnvVar<WinogradNonfused>::IsEnabled() && with_winograd_nonfused) {
     algo_types.push_back(CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD_NONFUSED);
+  }
+  if (only_deterministic_algo == false) {
+    algo_types.push_back(CUDNN_CONVOLUTION_BWD_DATA_ALGO_0);
+  } else {
+    LOG(INFO) << "cuDNN: using only deterministic backward data algorithms";
   }
 
   out_algorithms->clear();
@@ -2670,14 +2675,14 @@ bool CudnnSupport::GetConvolveBackwardDataAlgorithms(
 }
 
 bool CudnnSupport::GetConvolveBackwardFilterAlgorithms(
-    bool with_winograd_nonfused, int cc_major, int cc_minor,
-    std::vector<dnn::AlgorithmDesc>* out_algorithms) {
+    bool with_winograd_nonfused, bool only_deterministic_algo, int cc_major,
+    int cc_minor, std::vector<dnn::AlgorithmDesc>* out_algorithms) {
   std::vector<dnn::AlgorithmDesc::Index> algo_types = {
       // clang-format off
-      CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0,
+      //CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0, // non-deterministic
       CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1,
       CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT,
-      CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3,
+      //CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3, // non-deterministic
       // Based on cudnn.h, the following is not implemented.
       // CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD,
 
@@ -2689,7 +2694,12 @@ bool CudnnSupport::GetConvolveBackwardFilterAlgorithms(
   if (CudnnEnvVar<WinogradNonfused>::IsEnabled() && with_winograd_nonfused) {
     algo_types.push_back(CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD_NONFUSED);
   }
-
+  if (only_deterministic_algo == false) {
+    algo_types.push_back(CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0);
+    algo_types.push_back(CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3);
+  } else {
+    LOG(INFO) << "cuDNN: using only deterministic backward filter algorithms";
+  }
   out_algorithms->clear();
   for (auto i : algo_types) {
     out_algorithms->push_back({i, /*use_tensor_ops=*/false});
@@ -3787,7 +3797,7 @@ bool CudnnSupport::DoPoolBackward(
 bool CudnnSupport::DoNormalize(
     Stream* stream, const dnn::NormalizeDescriptor& normalize_descriptor,
     const DeviceMemory<float>& input_data, DeviceMemory<float>* output_data) {
-  LOG(FATAL) << "not yet implemented";  // TODO(leary)
+  LOG(FATAL) << "not yet implemented";  // TODO(leary)LOG(ERROR)
   return false;
 }
 
